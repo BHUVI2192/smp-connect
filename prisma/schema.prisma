@@ -1,0 +1,735 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Profile {
+  id            String         @id @default(uuid())
+  authId        String         @unique @map("auth_id")
+  email         String         @unique
+  fullName      String         @map("full_name")
+  role          Role
+  avatarUrl     String?        @map("avatar_url")
+  phone         String?
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  auditLogs     AuditLog[]
+  notifications Notification[]
+
+  @@map("profiles")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  action    String
+  entity    String
+  entityId  String?  @map("entity_id")
+  details   Json?
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id        String               @id @default(uuid())
+  userId    String               @map("user_id")
+  title     String
+  message   String
+  priority  NotificationPriority @default(MEDIUM)
+  isRead    Boolean              @default(false) @map("is_read")
+  link      String?
+  createdAt DateTime             @default(now()) @map("created_at")
+  user      Profile              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model State {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  code      String     @unique
+  districts        District[]
+  contacts         Contact[]
+  developmentWorks DevelopmentWork[]
+
+  @@map("states")
+}
+
+model District {
+  id      Int     @id @default(autoincrement())
+  name    String
+  stateId Int     @map("state_id")
+  state   State   @relation(fields: [stateId], references: [id], onDelete: Cascade)
+  taluks           Taluk[]
+  contacts         Contact[]
+  developmentWorks DevelopmentWork[]
+
+  @@unique([name, stateId])
+  @@index([stateId])
+  @@map("districts")
+}
+
+model Taluk {
+  id         Int         @id @default(autoincrement())
+  name       String
+  districtId Int         @map("district_id")
+  panchayats       Panchayat[]
+  contacts         Contact[]
+  developmentWorks DevelopmentWork[]
+  district         District          @relation(fields: [districtId], references: [id], onDelete: Cascade)
+
+  @@unique([name, districtId])
+  @@index([districtId])
+  @@map("taluks")
+}
+
+model Panchayat {
+  id       Int       @id @default(autoincrement())
+  name     String
+  talukId  Int       @map("taluk_id")
+  villages         Village[]
+  contacts         Contact[]
+  developmentWorks DevelopmentWork[]
+  taluk            Taluk     @relation(fields: [talukId], references: [id], onDelete: Cascade)
+
+  @@unique([name, talukId])
+  @@index([talukId])
+  @@map("panchayats")
+}
+
+model Village {
+  id          Int       @id @default(autoincrement())
+  name        String
+  panchayatId Int       @map("panchayat_id")
+  latitude    Float?
+  longitude   Float?
+  panchayat        Panchayat       @relation(fields: [panchayatId], references: [id], onDelete: Cascade)
+  contacts         Contact[]
+  developmentWorks DevelopmentWork[]
+
+  @@unique([name, panchayatId])
+  @@index([panchayatId])
+  @@map("villages")
+}
+
+model PlanTodayEvent {
+  id          String      @id @default(uuid())
+  title       String
+  description String?
+  eventDate   DateTime    @map("event_date")
+  startTime   String?     @map("start_time")
+  endTime     String?     @map("end_time")
+  location    String?
+  status      EventStatus @default(DRAFT)
+  isFinalized Boolean     @default(false) @map("is_finalized")
+  notes       String?
+  documentation String?
+  attendees   Json?    @map("attendees")
+  docMediaUrls Json?   @map("doc_media_urls")
+  paVoiceUrl   String? @map("pa_voice_url")
+  paMediaUrls  Json?   @map("pa_media_urls")
+  keyDecisions String? @map("key_decisions")
+  issues       String?
+  actions      String?
+  documentedAt DateTime? @map("documented_at")
+  documentedBy String? @map("documented_by")
+  createdBy   String      @map("created_by")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  @@index([eventDate])
+  @@index([status])
+  @@index([createdBy])
+  @@map("plan_today_events")
+}
+
+model TourProgram {
+  id           String     @id @default(uuid())
+  title        String
+  description  String?
+  startDate    DateTime   @map("start_date")
+  endDate      DateTime   @map("end_date")
+  locations    Json?
+  status       TourStatus @default(PLANNED)
+  staffNotes   String?    @map("staff_notes")
+  executionLog String?    @map("execution_log")
+  createdBy    String     @map("created_by")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  @@index([startDate])
+  @@index([status])
+  @@map("tour_programs")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model DevelopmentWork {
+  id            String                 @id @default(uuid())
+  title         String
+  description   String?
+  sector        WorkSector
+  status        WorkStatus             @default(PROPOSED)
+  budget        Float?
+  location      String?
+  stateId       Int?                   @map("state_id")
+  districtId    Int?                   @map("district_id")
+  talukId       Int?                   @map("taluk_id")
+  panchayatId   Int?                   @map("panchayat_id")
+  villageId     Int?                   @map("village_id")
+  latitude      Float?
+  longitude     Float?
+  startDate     DateTime?              @map("start_date")
+  endDate       DateTime?              @map("end_date")
+  contractor    String?
+  fundSource    String?                @map("fund_source")
+  remarks       String?
+
+  state     State?     @relation(fields: [stateId], references: [id])
+  district  District?  @relation(fields: [districtId], references: [id])
+  taluk     Taluk?     @relation(fields: [talukId], references: [id])
+  panchayat Panchayat? @relation(fields: [panchayatId], references: [id])
+  village   Village?   @relation(fields: [villageId], references: [id])
+  createdBy     String                 @map("created_by")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
+  budget_used   Float?                 @default(0)
+  is_deleted    Boolean?               @default(false)
+  progress_pct  Int?                   @default(0)
+  media         DevelopmentWorkMedia[]
+  mpladsProject MpladsProject?
+
+  @@index([sector])
+  @@index([status])
+  @@index([districtId])
+  @@index([createdAt])
+  @@map("development_works")
+}
+
+model DevelopmentWorkMedia {
+  id          String          @id @default(uuid())
+  workId      String          @map("work_id")
+  fileUrl     String          @map("file_url")
+  fileType    String          @map("file_type")
+  fileName    String          @map("file_name")
+  fileSize    Int?            @map("file_size")
+  caption     String?
+  createdAt   DateTime        @default(now()) @map("created_at")
+  phase       String?         @default("DURING") @db.VarChar(20)
+  uploaded_by String?
+  work        DevelopmentWork @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@index([workId])
+  @@map("development_work_media")
+}
+
+model MpladsProject {
+  id           String          @id @default(uuid())
+  workId       String          @unique @map("work_id")
+  schemeCode   String?         @map("scheme_code")
+  sanctionAmt  Float?          @map("sanction_amt")
+  releasedAmt  Float?          @map("released_amt")
+  utilizedAmt  Float?          @map("utilized_amt")
+  status       MpladsStatus    @default(RECOMMENDED)
+  sanctionDate DateTime?       @map("sanction_date")
+  releaseDate  DateTime?       @map("release_date")
+  createdBy    String          @map("created_by")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+  work         DevelopmentWork @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("mplads_projects")
+}
+
+model MpladsFund {
+  id        String   @id @default(uuid())
+  year      Int      @unique
+  allocated Float
+  released  Float    @default(0)
+  utilized  Float    @default(0)
+  balance   Float    @default(0)
+  updatedBy String   @map("updated_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("mplads_funds")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model Complaint {
+  id                   String                 @id @default(uuid())
+  subject              String
+  description          String
+  complainantName      String                 @map("complainant_name")
+  complainantPhone     String?                @map("complainant_phone")
+  complainantEmail     String?                @map("complainant_email")
+  category             String?
+  priority             ComplaintPriority      @default(MEDIUM)
+  status               ComplaintStatus        @default(RECEIVED)
+  districtId           Int?                   @map("district_id")
+  talukId              Int?                   @map("taluk_id")
+  location             String?
+  assignedTo           String?                @map("assigned_to")
+  resolution           String?
+  attachments          Json?
+  createdBy            String                 @map("created_by")
+  resolvedAt           DateTime?              @map("resolved_at")
+  createdAt            DateTime               @default(now()) @map("created_at")
+  updatedAt            DateTime               @updatedAt @map("updated_at")
+  is_deleted           Boolean?               @default(false)
+  referenceNo          String?                @unique @map("reference_no")
+  internal_notes       String?
+  escalated_at         DateTime?              @db.Timestamptz(6)
+  complaint_activities complaint_activities[]
+  complaint_notes      complaint_notes[]
+
+  @@index([status])
+  @@index([priority])
+  @@index([createdBy])
+  @@index([createdAt])
+  @@index([referenceNo])
+  @@map("complaints")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model Letter {
+  id                   String            @id @default(uuid())
+  subject              String
+  body                 String
+  recipientName        String            @map("recipient_name")
+  recipientDesignation String?           @map("recipient_designation")
+  recipientAddress     String?           @map("recipient_address")
+  letterDate           DateTime          @map("letter_date")
+  referenceNo          String?           @map("reference_no")
+  status               LetterStatus      @default(DRAFT)
+  pdfUrl               String?           @map("pdf_url")
+  createdBy            String            @map("created_by")
+  approvedBy           String?           @map("approved_by")
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt @map("updated_at")
+  version              Int?              @default(1)
+  rejected_reason      String?
+  department           String?           @db.VarChar(100)
+  signature_url        String?
+  is_deleted           Boolean?          @default(false)
+  letter_versions      letter_versions[]
+
+  @@index([status])
+  @@index([createdBy])
+  @@index([createdAt])
+  @@map("letters")
+}
+
+model ParliamentLetter {
+  id                   String               @id @default(uuid())
+  type                 ParliamentLetterType
+  subject              String
+  ministry             String
+  session              String?
+  dateRaised           DateTime?            @map("date_raised")
+  status               String               @default("PENDING")
+  content              String?
+  response             String?
+  createdBy            String               @map("created_by")
+  createdAt            DateTime             @default(now()) @map("created_at")
+  updatedAt            DateTime             @updatedAt @map("updated_at")
+
+  // New fields for enhanced tracking
+  referenceNo          String?              @map("reference_no")
+  addressedTo          String?              @map("addressed_to")
+  priority             String?              @default("MEDIUM")
+  expectedResponseDate DateTime?            @map("expected_response_date")
+  summary              String?
+  constituencyIssue    String?              @map("constituency_issue")
+  documentUrl          String?              @map("document_url")
+  reminderDate         DateTime?            @map("reminder_date")
+  isReminderEnabled    Boolean              @default(false) @map("is_reminder_enabled")
+  letterCategory       String?              @map("letter_category")
+
+  @@index([type])
+  @@index([session])
+  @@index([status])
+  @@map("parliament_letters")
+}
+
+model ParliamentQuestion {
+  id           String             @id @default(uuid())
+  questionNo   String?            @map("question_no")
+  subject      String
+  ministry     String
+  session      String?
+  questionDate DateTime?          @map("question_date")
+  questionText String             @map("question_text")
+  status       String             @default("PENDING")
+  createdBy    String             @map("created_by")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+  answers      ParliamentAnswer[]
+
+  @@index([session])
+  @@index([ministry])
+  @@map("parliament_questions")
+}
+
+model ParliamentAnswer {
+  id         String             @id @default(uuid())
+  questionId String             @map("question_id")
+  answerText String             @map("answer_text")
+  answeredBy String?            @map("answered_by")
+  answeredAt DateTime           @default(now()) @map("answered_at")
+  question   ParliamentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+  @@map("parliament_answers")
+}
+
+model PhotoGalleryAlbum {
+  id          String              @id @default(uuid())
+  title       String
+  description String?
+  coverUrl    String?             @map("cover_url")
+  eventDate   DateTime?           @map("event_date")
+  createdBy   String              @map("created_by")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+  photos      PhotoGalleryPhoto[]
+
+  @@index([createdAt])
+  @@map("photo_gallery_albums")
+}
+
+model PhotoGalleryPhoto {
+  id        String            @id @default(uuid())
+  albumId   String            @map("album_id")
+  fileUrl   String            @map("file_url")
+  caption   String?
+  sortOrder Int               @default(0) @map("sort_order")
+  createdAt DateTime          @default(now()) @map("created_at")
+  album     PhotoGalleryAlbum @relation(fields: [albumId], references: [id], onDelete: Cascade)
+
+  @@index([albumId])
+  @@map("photo_gallery_photos")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model SpeechStorage {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  speechDate  DateTime @map("speech_date")
+  location    String?
+  fileUrl     String   @map("file_url")
+  fileType    String   @map("file_type")
+  duration    Int?
+  transcript  String?
+  tags        String[]
+  createdBy   String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([speechDate])
+  @@index([tags])
+  @@map("speech_storage")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model Contact {
+  id           String        @id @default(uuid())
+  fullName     String        @map("full_name")
+  phone        String?
+  email        String?
+  designation  String?
+  organization String?
+  category     String?
+  stateId      Int?          @map("state_id")
+  districtId   Int?          @map("district_id")
+  talukId      Int?          @map("taluk_id")
+  panchayatId  Int?          @map("panchayat_id")
+  villageId    Int?          @map("village_id")
+  address      String?
+  birthday     DateTime?
+  anniversary  DateTime?
+  notes        String?
+  createdBy    String        @map("created_by")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  is_vip       Boolean?      @default(false)
+  tags         String[]      @default([])
+  is_deleted   Boolean?      @default(false)
+  greetingLogs GreetingLog[]
+
+  state     State?     @relation(fields: [stateId], references: [id])
+  district  District?  @relation(fields: [districtId], references: [id])
+  taluk     Taluk?     @relation(fields: [talukId], references: [id])
+  panchayat Panchayat? @relation(fields: [panchayatId], references: [id])
+  village   Village?   @relation(fields: [villageId], references: [id])
+
+  @@index([category])
+  @@index([fullName])
+  @@index([districtId])
+  @@map("contacts")
+}
+
+model GreetingLog {
+  id        String   @id @default(uuid())
+  contactId String   @map("contact_id")
+  occasion  String
+  message   String?
+  sentVia   String?  @map("sent_via")
+  sentAt    DateTime @default(now()) @map("sent_at")
+  sentBy    String   @map("sent_by")
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId])
+  @@index([sentAt])
+  @@map("greeting_logs")
+}
+
+model TrainMaster {
+  id          Int                @id @default(autoincrement())
+  trainNo     String             @unique @map("train_no")
+  trainName   String             @map("train_name")
+  fromStation String             @map("from_station")
+  toStation   String             @map("to_station")
+  trainType   String             @map("train_type")
+  runDays     String             @map("run_days")
+  eqRequests  RailwayEqRequest[]
+
+  @@index([trainNo])
+  @@index([trainName])
+  @@map("train_master")
+}
+
+model RailwayEqRequest {
+  id              String          @id @default(uuid())
+  trainId         Int             @map("train_id")
+  passengerName   String          @map("passenger_name")
+  passengerAge    Int?            @map("passenger_age")
+  passengerGender String?         @map("passenger_gender")
+  fromStation     String          @map("from_station")
+  toStation       String          @map("to_station")
+  travelDate      DateTime        @map("travel_date")
+  coachPreference String?         @map("coach_preference")
+  pnrNo           String?         @map("pnr_no")
+  remarks         String?
+  status          EqRequestStatus @default(DRAFT)
+  signatureUrl    String?         @map("signature_url")
+  pdfUrl          String?         @map("pdf_url")
+  createdBy       String          @map("created_by")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  train           TrainMaster     @relation(fields: [trainId], references: [id])
+
+  @@index([status])
+  @@index([travelDate])
+  @@map("railway_eq_requests")
+}
+
+model RailwayQuotaConfig {
+  id             String   @id @default(uuid())
+  quotaType      String   @map("quota_type")
+  maxPerDay      Int      @map("max_per_day")
+  maxPerMonth    Int      @map("max_per_month")
+  signatureUrl   String?  @map("signature_url")
+  headerTemplate String?  @map("header_template")
+  footerTemplate String?  @map("footer_template")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("railway_quota_config")
+}
+
+model DayBookEntry {
+  id              String   @id @default(uuid())
+  title           String
+  content         String?
+  entryDate       DateTime @map("entry_date")
+  mediaUrls       Json?    @map("media_urls")
+  voiceUrl        String?  @map("voice_url")
+  forwardedTo     String?  @map("forwarded_to")
+  isForwarded     Boolean  @default(false) @map("is_forwarded")
+  createdBy       String   @map("created_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  key_decisions   String?
+  issues          String?
+  actions         String?
+  linked_event_id String?
+  is_deleted      Boolean? @default(false)
+
+  @@index([entryDate])
+  @@index([createdBy])
+  @@map("day_book_entries")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model complaint_activities {
+  id           String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  complaint_id String
+  action       String
+  from_status  String?
+  to_status    String?
+  performed_by String
+  details      String?
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  complaints   Complaint @relation(fields: [complaint_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([complaint_id], map: "idx_complaint_activities")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model complaint_notes {
+  id           String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  complaint_id String
+  note         String
+  created_by   String
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  is_internal  Boolean?  @default(true)
+  complaints   Complaint @relation(fields: [complaint_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([complaint_id], map: "idx_complaint_notes")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model letter_versions {
+  id                    String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  letter_id             String
+  version               Int
+  subject               String
+  body                  String
+  recipient_name        String
+  recipient_designation String?
+  recipient_address     String?
+  changed_by            String
+  changed_at            DateTime? @default(now()) @db.Timestamptz(6)
+  change_summary        String?
+  letters               Letter    @relation(fields: [letter_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([letter_id], map: "idx_letter_versions_letter")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model signature_config {
+  id            String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  user_id       String
+  signature_url String
+  is_active     Boolean?  @default(true)
+  uploaded_at   DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([user_id], map: "idx_signature_config")
+}
+
+enum Role {
+  MP
+  PA
+  STAFF
+  CITIZEN
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum EventStatus {
+  DRAFT
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum TourStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum WorkSector {
+  ROADS
+  BRIDGES
+  WATER
+  ELECTRICITY
+  EDUCATION
+  HEALTH
+  AGRICULTURE
+  HOUSING
+  SANITATION
+  TELECOM
+  RAILWAYS
+  OTHER
+}
+
+enum WorkStatus {
+  PROPOSED
+  APPROVED
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+  CANCELLED
+}
+
+enum MpladsStatus {
+  RECOMMENDED
+  SANCTIONED
+  RELEASED
+  IN_PROGRESS
+  COMPLETED
+  PENDING
+}
+
+enum ComplaintPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ComplaintStatus {
+  RECEIVED
+  VERIFIED
+  IN_REVIEW
+  FORWARDED
+  RESOLVED
+  CLOSED
+  REJECTED
+}
+
+enum LetterStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  SENT
+  ARCHIVED
+}
+
+enum ParliamentLetterType {
+  STARRED
+  UNSTARRED
+  SHORT_NOTICE
+  SPECIAL_MENTION
+}
+
+enum EqRequestStatus {
+  DRAFT
+  REVIEW
+  SUBMITTED
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+

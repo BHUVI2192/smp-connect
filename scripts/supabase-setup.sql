@@ -1,0 +1,16 @@
+-- ============================================
+-- THIS FILE IS DEPRECATED — DO NOT USE
+-- ============================================
+-- The setup has been split into two scripts
+-- that must be run in order:
+--
+--   1. scripts/01-auth-and-storage.sql
+--      Run BEFORE  npx prisma db push
+--      Creates auth users + storage buckets
+--
+--   2. scripts/02-realtime-and-search.sql
+--      Run AFTER   npx prisma db push
+--      Enables Realtime + full-text search indexes
+--
+-- See README.md for the full setup guide.
+-- ============================================
