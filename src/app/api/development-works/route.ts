@@ -89,6 +89,8 @@ export async function POST(request: NextRequest) {
         sector: body.sector,
         status: body.status || "PROPOSED",
         budget: body.budget ? parseFloat(body.budget) : null,
+        budget_used: body.budget_used ? parseFloat(body.budget_used) : 0,
+        progress_pct: body.progress_pct ? parseInt(body.progress_pct) : 0,
         location: body.location || null,
         stateId: body.stateId ? parseInt(body.stateId) : null,
         districtId: body.districtId ? parseInt(body.districtId) : null,
@@ -126,6 +128,8 @@ export async function PUT(request: NextRequest) {
     const { id, ...updateData } = body;
 
     if (updateData.budget) updateData.budget = parseFloat(updateData.budget);
+    if (updateData.budget_used) updateData.budget_used = parseFloat(updateData.budget_used);
+    if (updateData.progress_pct) updateData.progress_pct = parseInt(updateData.progress_pct);
     if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
     if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
     if (updateData.latitude) updateData.latitude = parseFloat(updateData.latitude);

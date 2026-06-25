@@ -43,6 +43,7 @@ export const roleConfig: RoleConfig = {
       { title: "Complaints", href: "/staff/complaints", icon: "MessageSquare" },
       { title: "Letters", href: "/staff/letters", icon: "Mail" },
       { title: "MPLADS", href: "/staff/mplads", icon: "BarChart3" },
+      { title: "Development", href: "/staff/development-works", icon: "Building2" },
       { title: "Contacts", href: "/staff/contacts", icon: "Users" },
       { title: "Media", href: "/staff/media", icon: "Upload" },
       { title: "Speeches", href: "/staff/speeches", icon: "Mic" },
